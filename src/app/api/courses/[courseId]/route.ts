@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserSession, validateUserPermissions, extractFolderIdFromUrl } from '@/lib/drive-auth-utils';
+import { getUserSession, validateUserPermissions, generateCacheKey, extractFolderIdFromUrl } from '@/lib/drive-auth-utils';
 import { GoogleDriveService } from '@/lib/google-drive';
 import { transformDriveFolderToCourse, transformDriveFolderToChapter, sortChaptersByName, assignChapterOrder } from '@/lib/models';
-import { getCacheService, CacheKeyGenerator, CACHE_CONFIG } from '@/lib/cache';
 import type { Course, Chapter } from '@/lib/models';
+
+// Cache for storing course details (30 minutes TTL)
+const courseDetailsCache = new Map<string, { data: { course: Course; chapters: Chapter[] }; timestamp: number }>();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export async function GET(
   request: NextRequest,
@@ -32,15 +35,14 @@ export async function GET(
     }
 
     // Check cache first
-    const cache = getCacheService();
-    const cacheKey = CacheKeyGenerator.courseDetails(session.user.id, courseId);
-    const cachedData = await cache.get<{ course: Course; chapters: Chapter[] }>(cacheKey);
+    const cacheKey = generateCacheKey('course', session.user.id, courseId);
+    const cached = courseDetailsCache.get(cacheKey);
     
-    if (cachedData) {
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       return NextResponse.json({
-        ...cachedData,
+        ...cached.data,
         cached: true,
-        timestamp: new Date().toISOString()
+        timestamp: new Date(cached.timestamp).toISOString()
       });
     }
 
@@ -87,7 +89,10 @@ export async function GET(
       const responseData = { course, chapters };
 
       // Cache the results
-      await cache.set(cacheKey, responseData, CACHE_CONFIG.COURSE_DETAILS_TTL);
+      courseDetailsCache.set(cacheKey, {
+        data: responseData,
+        timestamp: Date.now()
+      });
 
       return NextResponse.json({
         ...responseData,
@@ -135,4 +140,12 @@ export async function GET(
   }
 }
 
-// Cache cleanup is handled automatically by the cache service
+// Clean up expired cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of courseDetailsCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      courseDetailsCache.delete(key);
+    }
+  }
+}, CACHE_TTL); // Run cleanup every 30 minutes
