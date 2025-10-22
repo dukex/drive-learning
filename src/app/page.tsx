@@ -1,42 +1,15 @@
-'use client'
-
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/components/providers/AuthProvider'
+import { redirect } from 'next/navigation'
 import SignInButton from '@/components/auth/SignInButton'
+import { headers } from 'next/headers'
+import { auth } from '@/lib/auth'
 
-export default function WelcomePage() {
-  const [authError, setAuthError] = useState<string | null>(null)
-  const { status } = useAuth()
-  const router = useRouter()
+export default async function WelcomePage() {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
 
-  // Redirect authenticated users to dashboard
-  useEffect(() => {
-    console.log(status)
-    if (status === 'authenticated') {
-      router.push('/dashboard')
-    }
-  }, [status, router])
-
-  const handleAuthError = (error: string) => {
-    setAuthError(error)
-  }
-
-  // Show loading state while checking authentication
-  if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-gray-600 dark:text-gray-400">Loading...</span>
-        </div>
-      </div>
-    )
-  }
-
-  // Don't render anything if authenticated (will redirect)
-  if (status === 'authenticated') {
-    return null
+  if(session) {
+    redirect("/dashboard")
   }
 
   return (
@@ -68,8 +41,8 @@ export default function WelcomePage() {
             </p>
           </div>
 
-          {/* Authentication Error */}
-          {authError && (
+          {/* TODO: uthentication Error */}
+          {/* {authError && (
             <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/20">
               <div className="flex">
                 <div className="flex-shrink-0">
@@ -109,11 +82,11 @@ export default function WelcomePage() {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Sign In Section */}
-          <div className="space-y-4">
-            <SignInButton onError={handleAuthError} />
+          <div className="space-y-4 flex flex-col justify-center">
+            <SignInButton  />
             
             <div className="text-center">
               <p className="text-xs text-gray-500 dark:text-gray-400">

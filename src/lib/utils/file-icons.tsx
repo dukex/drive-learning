@@ -176,7 +176,7 @@ export function supportsPreview(mimeType: string, fileName?: string): boolean {
   const fileType = getDetailedFileType(mimeType, fileName);
   
   // File types that can be previewed
-  const previewableTypes = ['pdf', 'image', 'text', 'document', 'spreadsheet', 'presentation'];
+  const previewableTypes = ['pdf', 'image', 'text', 'document', 'spreadsheet', 'presentation', 'video'];
   
   return previewableTypes.includes(fileType);
 }

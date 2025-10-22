@@ -33,7 +33,7 @@ export class GoogleDriveService {
   constructor(accessToken: string) {
     const auth = new google.auth.OAuth2();
     auth.setCredentials({ access_token: accessToken });
-    
+
     this.drive = google.drive({ version: 'v3', auth });
   }
 

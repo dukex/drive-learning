@@ -1,25 +1,32 @@
-import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
-import { auth } from '@/lib/auth'
-import CoursesClient from './CoursesClient'
+import Navigation from '@/components/ui/Navigation';
+import { validSession } from '@/lib/drive-auth-utils';
+import { fetchCourses } from './actions';
+import CoursesClientWrapper from '@/components/courses/CoursesList';
 
 export default async function CoursesListPage() {
-  // Check authentication on server side
-  const session = await auth.api.getSession({
-    headers: await headers()
-  })
+    const session = await validSession()
+    const { courses } = await fetchCourses(session)
 
-  if (!session?.user) {
-    redirect('/')
-  }
 
-  // Pass user data to client component
-  const user = {
-    id: session.user.id,
-    name: session.user.name,
-    email: session.user.email,
-    image: session.user.image,
-  }
+    return <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+        <Navigation user={session.user} />
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div className="px-4 py-6 sm:px-0">
+                {/* Page Header */}
+                <div className="mb-8">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+                        Available Courses
+                    </h2>
+                    <p className="mt-2 text-gray-600 dark:text-gray-400">
+                        Browse and access your educational content
+                    </p>
+                </div>
 
-  return <CoursesClient user={user} />
+                 <CoursesClientWrapper courses={courses} />
+
+                {/* TODO: remove <CoursesClient user={session.user} /> */}
+            
+            </div>
+        </main>
+    </div>
 }

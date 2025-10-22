@@ -9,7 +9,7 @@ import { transformDriveFolderToCourse, transformDriveFolderToChapter, transformD
 import Breadcrumb, { BreadcrumbIcons } from '@/components/ui/Breadcrumb';
 import type { ChapterFile } from '@/lib/models';
 import { formatFileSize, getFileTypeCategory, isViewableInBrowser } from '@/lib/models/chapter-file';
-import { getFileTypeIcon, getFileTypeDisplayName, supportsPreview, getPreviewUrl } from '@/lib/utils/file-icons';
+import { getFileTypeIcon, getFileTypeDisplayName, supportsPreview, getPreviewUrl, getDetailedFileType } from '@/lib/utils/file-icons';
 
 interface ChapterDetailPageProps {
     params: Promise<{
@@ -32,7 +32,7 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
         // Get user session and validate authentication
         const session = await getUserSession();
         if (!session) {
-            redirect('/api/auth/signin');
+            redirect('/');
         }
 
         // Validate user permissions
@@ -106,7 +106,7 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
         console.error('Chapter details fetch error:', error);
 
         if (error instanceof Error && error.message.includes('Authentication')) {
-            redirect('/api/auth/signin');
+            redirect('/');
         }
 
         if (error instanceof Error) {
@@ -202,6 +202,10 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
         },
     ];
 
+    const mainVideo =   files.filter(file => getDetailedFileType(file.mimeType, file.name) === 'video').at(0)
+                            
+                            
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -220,24 +224,6 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
                                     {chapterDescription}
                                 </p>
                             )}
-                            <div className="flex items-center space-x-6 text-sm text-gray-500">
-                                <span className="flex items-center">
-                                    <svg
-                                        className="w-4 h-4 mr-1"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                        />
-                                    </svg>
-                                    {totalFiles} {totalFiles === 1 ? 'File' : 'Files'}
-                                </span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -245,6 +231,13 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
                 {/* Files List */}
                 <div className="mb-8">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Files</h2>
+                            {mainVideo && <>
+       
+<iframe width={"100%"} height={"100%"} src={getPreviewUrl(mainVideo.id, mainVideo.mimeType, mainVideo.name)} />
+<p>{getPreviewUrl(mainVideo.id, mainVideo.mimeType, mainVideo.name)}</p>
+                                <p>
+                                {JSON.stringify(mainVideo)}</p>
+</>}
 
                     {files.length === 0 ? (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
@@ -282,7 +275,7 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
                                                 <div className="flex-shrink-0">
                                                     {getFileTypeIcon(file.mimeType, file.name)}
                                                 </div>
-
+                                               
                                                 {/* File Info */}
                                                 <div className="flex-1 min-w-0">
                                                     <h3 className="text-lg font-medium text-gray-900 truncate">
@@ -413,7 +406,7 @@ export default async function ChapterDetailPage({ params }: ChapterDetailPagePro
     });
 
     if (!session) {
-        redirect('/api/auth/signin');
+        redirect('/');
     }
 
     const { courseId, chapterId } = await params;

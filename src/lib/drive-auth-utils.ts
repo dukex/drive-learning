@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { auth } from './auth';
 import { headers } from 'next/headers';
 
@@ -6,6 +7,7 @@ export interface UserSession {
     id: string;
     email: string;
     name: string;
+    image?: string | null; 
   };
   accessToken: string;
   refreshToken?: string;
@@ -15,6 +17,19 @@ export interface CourseConfig {
   coursesListEnv: string;
   courseUrls: string[];
 }
+
+export async function validSession() {
+    const session = await getUserSession();
+    if (!session) {
+        redirect('/');
+    }
+
+    // Validate user permissions
+    validateUserPermissions(session);
+
+    return session;
+}
+
 
 /**
  * Extract user session and access token from Better Auth
@@ -51,7 +66,8 @@ export async function getUserSession(): Promise<UserSession | null> {
       user: {
         id: session.user.id,
         email: session.user.email || '',
-        name: session.user.name || ''
+        name: session.user.name || '',
+        image: session.user.image
       },
       accessToken: account.accessToken,
       refreshToken: account.refreshToken

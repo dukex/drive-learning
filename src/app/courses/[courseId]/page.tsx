@@ -26,7 +26,7 @@ async function fetchCourseData(courseId: string): Promise<CourseApiResponse> {
         // Get user session and validate authentication
         const session = await getUserSession();
         if (!session) {
-            redirect('/api/auth/signin');
+            redirect('/');
         }
 
         // Validate user permissions
@@ -98,7 +98,7 @@ async function fetchCourseData(courseId: string): Promise<CourseApiResponse> {
         console.error('Course details fetch error:', error);
         
         if (error instanceof Error && error.message.includes('Authentication')) {
-            redirect('/api/auth/signin');
+            redirect('/');
         }
 
         throw error;
@@ -277,22 +277,7 @@ async function CourseDetailPageContent({ courseId }: { courseId: string }) {
                                     </div>
 
                                     <div className="space-y-2 text-sm text-gray-500">
-                                        <div className="flex items-center">
-                                            <svg
-                                                className="w-4 h-4 mr-2"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                />
-                                            </svg>
-                                            {chapter.fileCount} {chapter.fileCount === 1 ? 'file' : 'files'}
-                                        </div>
+                                        
                                         <div className="flex items-center">
                                             <svg
                                                 className="w-4 h-4 mr-2"
@@ -344,7 +329,7 @@ export default async function CourseDetailPage({ params }: CourseDetailPageProps
     });
 
     if (!session) {
-        redirect('/api/auth/signin');
+        redirect('/');
     }
 
     const { courseId } = await params;
