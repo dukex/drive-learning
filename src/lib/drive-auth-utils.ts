@@ -29,32 +29,32 @@ export async function getUserSession(): Promise<UserSession | null> {
       return null;
     }
 
-    // For now, we'll need to handle the access token differently
-    // Better Auth stores tokens in the session or account table
-    // We'll need to access the raw session data or implement a custom method
+    // Query the database directly to get the OAuth tokens
+    // Better Auth stores OAuth tokens in the 'account' table
+    const db = (auth as any).options.database;
     
-    // Temporary implementation - in a real scenario, you'd need to:
-    // 1. Store the access token in the session during OAuth flow
-    // 2. Or query the database directly for the account tokens
-    // 3. Or use Better Auth's token refresh mechanism
+    const accountQuery = db.prepare(`
+      SELECT accessToken, refreshToken 
+      FROM account 
+      WHERE userId = ? AND providerId = 'google'
+      ORDER BY createdAt DESC 
+      LIMIT 1
+    `);
     
-    // For this implementation, we'll assume the token is available in session
-    const accessToken = (session as any).accessToken || 
-                       (session.session as any).accessToken ||
-                       process.env.GOOGLE_ACCESS_TOKEN; // Fallback for development
-
-    if (!accessToken) {
+    const account = accountQuery.get(session.user.id);
+    
+    if (!account?.accessToken) {
       throw new Error('No Google access token found. Please re-authenticate.');
     }
 
     return {
       user: {
         id: session.user.id,
-        email: session.user.email,
-        name: session.user.name
+        email: session.user.email || '',
+        name: session.user.name || ''
       },
-      accessToken: accessToken,
-      refreshToken: (session as any).refreshToken
+      accessToken: account.accessToken,
+      refreshToken: account.refreshToken
     };
   } catch (error) {
     console.error('Failed to get user session:', error);

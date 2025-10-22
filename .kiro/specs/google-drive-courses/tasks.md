@@ -104,13 +104,13 @@
   - Add retry functionality for failed requests
   - _Requirements: 1.5, 5.2, 5.3_
 
-- [ ] 5. Create course detail page with chapters
+- [-] 5. Create course detail page with chapters
   - Build course detail page showing course info and chapters list
   - Implement breadcrumb navigation
   - Add chapter metadata display (file count, last updated)
   - _Requirements: 2.1, 2.3, 2.5_
 
-- [ ] 5.1 Implement CourseDetailPage component
+- [-] 5.1 Implement CourseDetailPage component
   - Create dynamic route page for /courses/[courseId]
   - Fetch course and chapters data using API route
   - Display course information and chapters list

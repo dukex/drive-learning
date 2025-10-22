@@ -12,6 +12,7 @@ export default function WelcomePage() {
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
+    console.log(status)
     if (status === 'authenticated') {
       router.push('/dashboard')
     }

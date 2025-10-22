@@ -1,40 +1,20 @@
-'use client'
-
-import { useAuth } from '@/components/providers/AuthProvider'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import Link from 'next/link'
+import { auth } from '@/lib/auth'
 import SignOutButton from '@/components/auth/SignOutButton'
 
-export default function DashboardPage() {
-  const { status, data } = useAuth()
-  const router = useRouter()
+export default async function DashboardPage() {
+  // Get session on server side
+  const session = await auth.api.getSession({
+    headers: await headers()
+  })
 
-  // Redirect unauthenticated users to welcome page
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/')
-    }
-  }, [status, router])
-
-  // Show loading state while checking authentication
-  if (status === 'loading') {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-gray-600 dark:text-gray-400">Loading...</span>
-        </div>
-      </div>
-    )
+  if (!session?.user) {
+    redirect('/')
   }
 
-  // Don't render anything if unauthenticated (will redirect)
-  if (status === 'unauthenticated') {
-    return null
-  }
-
-  const user = data?.user
+  const user = session.user
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
