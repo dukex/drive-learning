@@ -49,13 +49,13 @@
   - Generate download and view URLs for different file types
   - _Requirements: 3.2, 3.4_
 
-- [ ] 3. Create API routes for course data
+- [x] 3. Create API routes for course data
   - Implement /api/courses route for listing all courses
   - Create /api/courses/[courseId] route for course details and chapters
   - Add /api/courses/[courseId]/chapters/[chapterId] route for chapter files
   - _Requirements: 1.1, 2.1, 3.1_
 
-- [ ] 3.1 Implement courses list API endpoint with user auth
+- [x] 3.1 Implement courses list API endpoint with user auth
   - Create GET /api/courses route handler with session validation
   - Extract user access token from Better Auth session
   - Fetch all courses from COURSES_LIST using user's Drive permissions
@@ -63,14 +63,14 @@
   - Handle authentication and Google Drive API errors gracefully
   - _Requirements: 1.1, 1.2, 4.1, 4.3, 5.1, 5.5_
 
-- [ ] 3.2 Implement course details API endpoint with user auth
+- [x] 3.2 Implement course details API endpoint with user auth
   - Create GET /api/courses/[courseId] route handler with session validation
   - Use user access token to fetch course metadata and chapters from Google Drive
   - Implement user-specific caching with 30-minute TTL
   - Return structured course and chapter data
   - _Requirements: 2.1, 2.2, 4.1, 5.1_
 
-- [ ] 3.3 Implement chapter files API endpoint with user auth
+- [x] 3.3 Implement chapter files API endpoint with user auth
   - Create GET /api/courses/[courseId]/chapters/[chapterId] route handler with session validation
   - Use user access token to fetch all files within the specified chapter folder
   - Implement user-specific caching with 15-minute TTL
@@ -83,13 +83,13 @@
   - Test caching behavior and TTL settings
   - _Requirements: 1.5, 2.5, 3.5_
 
-- [ ] 4. Create courses list page and navigation
+- [x] 4. Create courses list page and navigation
   - Build courses list page component displaying all available courses
   - Implement course grid layout with course metadata
   - Add loading states and error handling for course fetching
   - _Requirements: 1.1, 1.3, 1.5_
 
-- [ ] 4.1 Implement CoursesListPage component with auth protection
+- [x] 4.1 Implement CoursesListPage component with auth protection
   - Create React Server Component for courses list with session check
   - Redirect to login if user is not authenticated
   - Fetch courses data using authenticated API route
@@ -97,7 +97,7 @@
   - Show course titles, descriptions, and chapter counts
   - _Requirements: 1.1, 1.3, 4.2, 4.3_
 
-- [ ] 4.2 Add loading and error states
+- [x] 4.2 Add loading and error states
   - Implement loading skeleton for courses list
   - Create error boundary for API failures
   - Display user-friendly error messages for inaccessible courses
