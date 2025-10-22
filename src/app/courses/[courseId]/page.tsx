@@ -5,9 +5,9 @@ import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { getUserSession, validateUserPermissions, generateCacheKey, extractFolderIdFromUrl } from '@/lib/drive-auth-utils';
 import { GoogleDriveService } from '@/lib/google-drive';
-import { transformDriveFolderToCourse, transformDriveFolderToChapter, sortChaptersByName, assignChapterOrder } from '@/lib/models';
+import { transformDriveFolderToCourse, transformDriveFolderToLesson, sortLessonsByName, assignLessonOrder } from '@/lib/models';
 import Breadcrumb, { BreadcrumbIcons } from '@/components/ui/Breadcrumb';
-import type { Course, Chapter } from '@/lib/models';
+import type { Course, Lesson } from '@/lib/models';
 interface CourseDetailPageProps {
     params: Promise<{
         courseId: string;
@@ -16,7 +16,7 @@ interface CourseDetailPageProps {
 
 interface CourseApiResponse {
     course: Course;
-    chapters: Chapter[];
+    lessons: Lesson[];
     cached: boolean;
     timestamp: string;
 }
@@ -54,28 +54,28 @@ async function fetchCourseData(courseId: string): Promise<CourseApiResponse> {
             // Get course metadata
             const folderMetadata = await driveService.getFolderMetadata(folderId);
             
-            // Get chapters (subfolders)
-            const chapterFolders = await driveService.listFolders(folderId);
+            // Get lessons (subfolders)
+            const lessonFolders = await driveService.listFolders(folderId);
             
             // Transform course data
             const course = transformDriveFolderToCourse(
                 folderMetadata,
                 `https://drive.google.com/drive/folders/${folderId}`,
-                chapterFolders.length
+                lessonFolders.length
             );
 
-            // Transform and sort chapters
-            let chapters = chapterFolders.map(folder => 
-                transformDriveFolderToChapter(folder, course.id)
+            // Transform and sort lessons
+            let lessons = lessonFolders.map(folder => 
+                transformDriveFolderToLesson(folder, course.id)
             );
             
-            // Sort chapters by name and assign order
-            chapters = sortChaptersByName(chapters);
-            chapters = assignChapterOrder(chapters);
+            // Sort lessons by name and assign order
+            lessons = sortLessonsByName(lessons);
+            lessons = assignLessonOrder(lessons);
 
             return {
                 course,
-                chapters,
+                lessons,
                 cached: false,
                 timestamp: new Date().toISOString()
             };
@@ -155,7 +155,7 @@ function CourseDetailContent({ courseId }: { courseId: string }) {
 
 async function CourseDetailPageContent({ courseId }: { courseId: string }) {
     const data = await fetchCourseData(courseId);
-    const { course, chapters } = data;
+    const { course, lessons } = data;
 
     const breadcrumbItems = [
         {
@@ -201,7 +201,7 @@ async function CourseDetailPageContent({ courseId }: { courseId: string }) {
                                             d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                                         />
                                     </svg>
-                                    {chapters.length} {chapters.length === 1 ? 'Chapter' : 'Chapters'}
+                                    {lessons.length} {lessons.length === 1 ? 'Lesson' : 'Lessons'}
                                 </span>
                                 <span className="flex items-center">
                                     <svg
@@ -233,11 +233,11 @@ async function CourseDetailPageContent({ courseId }: { courseId: string }) {
                     </div>
                 </div>
 
-                {/* Chapters List */}
+                {/* Lessons List */}
                 <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Chapters</h2>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Lessons</h2>
 
-                    {chapters.length === 0 ? (
+                    {lessons.length === 0 ? (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
                             <svg
                                 className="w-12 h-12 text-gray-400 mx-auto mb-4"
@@ -253,26 +253,26 @@ async function CourseDetailPageContent({ courseId }: { courseId: string }) {
                                 />
                             </svg>
                             <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                No chapters found
+                                No lessons found
                             </h3>
                             <p className="text-gray-500">
-                                This course doesn't have any chapters yet.
+                                This course doesn't have any lessons yet.
                             </p>
                         </div>
                     ) : (
                         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {chapters.map((chapter) => (
+                            {lessons.map((lesson) => (
                                 <Link
-                                    key={chapter.id}
-                                    href={`/courses/${courseId}/chapters/${chapter.id}`}
+                                    key={lesson.id}
+                                    href={`/courses/${courseId}/lessons/${lesson.id}`}
                                     className="group bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-blue-300 transition-all duration-200"
                                 >
                                     <div className="flex items-start justify-between mb-4">
                                         <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                                            {chapter.title}
+                                            {lesson.title}
                                         </h3>
                                         <span className="text-sm font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                            #{chapter.order}
+                                            #{lesson.order}
                                         </span>
                                     </div>
 
@@ -292,12 +292,12 @@ async function CourseDetailPageContent({ courseId }: { courseId: string }) {
                                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                                 />
                                             </svg>
-                                            {formatLastUpdated(new Date(chapter.lastUpdated))}
+                                            {formatLastUpdated(new Date(lesson.lastUpdated))}
                                         </div>
                                     </div>
 
                                     <div className="mt-4 flex items-center text-blue-600 group-hover:text-blue-700">
-                                        <span className="text-sm font-medium">View chapter</span>
+                                        <span className="text-sm font-medium">View lesson</span>
                                         <svg
                                             className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform"
                                             fill="none"

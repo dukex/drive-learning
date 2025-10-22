@@ -5,29 +5,29 @@ import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { getUserSession, validateUserPermissions, extractFolderIdFromUrl } from '@/lib/drive-auth-utils';
 import { GoogleDriveService } from '@/lib/google-drive';
-import { transformDriveFolderToCourse, transformDriveFolderToChapter, transformDriveFileToChapterFile } from '@/lib/models';
+import { transformDriveFolderToCourse, transformDriveFileToLessonFile } from '@/lib/models';
 import Breadcrumb, { BreadcrumbIcons } from '@/components/ui/Breadcrumb';
-import type { ChapterFile } from '@/lib/models';
-import { formatFileSize, getFileTypeCategory, isViewableInBrowser } from '@/lib/models/chapter-file';
+import type { LessonFile } from '@/lib/models';
+import { formatFileSize, isViewableInBrowser } from '@/lib/models/lesson-file';
 import { getFileTypeIcon, getFileTypeDisplayName, supportsPreview, getPreviewUrl, getDetailedFileType } from '@/lib/utils/file-icons';
 
-interface ChapterDetailPageProps {
+interface LessonDetailPageProps {
     params: Promise<{
         courseId: string;
-        chapterId: string;
+        lessonId: string;
     }>;
 }
 
-interface ChapterApiResponse {
-    files: ChapterFile[];
-    chapterName: string;
-    chapterDescription?: string;
+interface LessonApiResponse {
+    files: LessonFile[];
+    lessonName: string;
+    lessonDescription?: string;
     totalFiles: number;
     cached: boolean;
     timestamp: string;
 }
 
-async function fetchChapterData(courseId: string, chapterId: string): Promise<ChapterApiResponse & { courseName: string }> {
+async function fetchLessonData(courseId: string, lessonId: string): Promise<LessonApiResponse & { courseName: string }> {
     try {
         // Get user session and validate authentication
         const session = await getUserSession();
@@ -38,8 +38,8 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
         // Validate user permissions
         validateUserPermissions(session);
 
-        if (!courseId || !chapterId) {
-            throw new Error('Course ID and Chapter ID are required');
+        if (!courseId || !lessonId) {
+            throw new Error('Course ID and Lesson ID are required');
         }
 
         // Initialize Google Drive service with user's access token
@@ -57,36 +57,26 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
 
         const courseMetadata = await driveService.getFolderMetadata(courseFolderId);
 
-        // Get chapter folder ID
-        let chapterFolderId: string;
+        // Get lesson folder ID
+        let lessonFolderId: string;
         try {
-            chapterFolderId = chapterId.includes('drive.google.com')
-                ? extractFolderIdFromUrl(chapterId)
-                : chapterId;
+            lessonFolderId = lessonId.includes('drive.google.com')
+                ? extractFolderIdFromUrl(lessonId)
+                : lessonId;
         } catch (error) {
-            throw new Error('Invalid chapter ID format');
+            throw new Error('Invalid lesson ID format');
         }
 
-        // Get chapter metadata and files directly
-        const chapterMetadata = await driveService.getFolderMetadata(chapterFolderId);
-        const driveFiles = await driveService.listFiles(chapterFolderId);
+        // Get lesson metadata and files directly
+        const lessonMetadata = await driveService.getFolderMetadata(lessonFolderId);
+        const driveFiles = await driveService.listFiles(lessonFolderId);
 
-        // Transform files to ChapterFile objects
-        const files: ChapterFile[] = [];
+        // Transform files to LessonFile objects
+        const files: LessonFile[] = [];
         for (const driveFile of driveFiles) {
             try {
-                const chapterFile: ChapterFile = {
-                    id: driveFile.id!,
-                    chapterId,
-                    name: driveFile.name || 'Untitled File',
-                    mimeType: driveFile.mimeType || 'application/octet-stream',
-                    size: driveFile.size ? parseInt(driveFile.size, 10) : 0,
-                    downloadUrl: driveFile.webContentLink || `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`,
-                    viewUrl: driveFile.webViewLink,
-                    thumbnailUrl: driveFile.thumbnailLink,
-                    lastModified: driveFile.modifiedTime ? new Date(driveFile.modifiedTime) : new Date(),
-                };
-                files.push(chapterFile);
+                const lessonFile = transformDriveFileToLessonFile(driveFile, lessonId);
+                files.push(lessonFile);
             } catch (fileError) {
                 console.error(`Failed to process file ${driveFile.name}:`, fileError);
             }
@@ -94,8 +84,8 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
 
         return {
             files,
-            chapterName: chapterMetadata.name || 'Unknown Chapter',
-            chapterDescription: chapterMetadata.description,
+            lessonName: lessonMetadata.name || 'Unknown Lesson',
+            lessonDescription: lessonMetadata.description,
             totalFiles: files.length,
             cached: false,
             timestamp: new Date().toISOString(),
@@ -103,7 +93,7 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
         };
 
     } catch (error) {
-        console.error('Chapter details fetch error:', error);
+        console.error('Lesson details fetch error:', error);
 
         if (error instanceof Error && error.message.includes('Authentication')) {
             redirect('/');
@@ -113,7 +103,7 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
             if (error.message.includes('not found')) {
                 notFound();
             } else if (error.message.includes('permissions')) {
-                throw new Error('Insufficient permissions to access this chapter');
+                throw new Error('Insufficient permissions to access this lesson');
             }
         }
 
@@ -133,7 +123,7 @@ function formatLastModified(date: Date): string {
 
 // File icon function removed - now using getFileTypeIcon from utils
 
-function ChapterDetailContent({ courseId, chapterId }: { courseId: string; chapterId: string }) {
+function LessonDetailContent({ courseId, lessonId }: { courseId: string; lessonId: string }) {
     const breadcrumbItems = [
         {
             label: 'Courses',
@@ -181,9 +171,9 @@ function ChapterDetailContent({ courseId, chapterId }: { courseId: string; chapt
     );
 }
 
-async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: string; chapterId: string }) {
-    const data = await fetchChapterData(courseId, chapterId);
-    const { files, chapterName, chapterDescription, totalFiles, courseName } = data;
+async function LessonDetailPageContent({ courseId, lessonId }: { courseId: string; lessonId: string }) {
+    const data = await fetchLessonData(courseId, lessonId);
+    const { files, lessonName, lessonDescription, courseName } = data;
 
     const breadcrumbItems = [
         {
@@ -197,14 +187,14 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
             icon: BreadcrumbIcons.Course,
         },
         {
-            label: chapterName,
-            icon: BreadcrumbIcons.Chapter,
+            label: lessonName,
+            icon: BreadcrumbIcons.Lesson,
         },
     ];
 
-    const mainVideo =   files.filter(file => getDetailedFileType(file.mimeType, file.name) === 'video').at(0)
-                            
-                            
+    const mainVideo = files.filter(file => getDetailedFileType(file.mimeType, file.name) === 'video').at(0)
+
+
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -212,16 +202,16 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
                 {/* Breadcrumb Navigation */}
                 <Breadcrumb items={breadcrumbItems} className="mb-8" />
 
-                {/* Chapter Header */}
+                {/* Lesson Header */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
                             <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                                {chapterName}
+                                {lessonName}
                             </h1>
-                            {chapterDescription && (
+                            {lessonDescription && (
                                 <p className="text-lg text-gray-600 mb-4">
-                                    {chapterDescription}
+                                    {lessonDescription}
                                 </p>
                             )}
                         </div>
@@ -231,13 +221,11 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
                 {/* Files List */}
                 <div className="mb-8">
                     <h2 className="text-2xl font-bold text-gray-900 mb-6">Files</h2>
-                            {mainVideo && <>
-       
-<iframe width={"100%"} height={"100%"} src={getPreviewUrl(mainVideo.id, mainVideo.mimeType, mainVideo.name)} />
-<p>{getPreviewUrl(mainVideo.id, mainVideo.mimeType, mainVideo.name)}</p>
-                                <p>
-                                {JSON.stringify(mainVideo)}</p>
-</>}
+                    {mainVideo && <>
+                        <iframe width={"100%"} height={"100%"} src={getPreviewUrl(mainVideo.id, mainVideo.mimeType, mainVideo.name)!} />
+                        <p>{getPreviewUrl(mainVideo.id, mainVideo.mimeType, mainVideo.name)}</p>
+                        <p>{JSON.stringify(mainVideo)}</p>
+                    </>}
 
                     {files.length === 0 ? (
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
@@ -258,7 +246,7 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
                                 No files found
                             </h3>
                             <p className="text-gray-500">
-                                This chapter doesn't have any files yet.
+                                This lesson doesn't have any files yet.
                             </p>
                         </div>
                     ) : (
@@ -275,7 +263,7 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
                                                 <div className="flex-shrink-0">
                                                     {getFileTypeIcon(file.mimeType, file.name)}
                                                 </div>
-                                               
+
                                                 {/* File Info */}
                                                 <div className="flex-1 min-w-0">
                                                     <h3 className="text-lg font-medium text-gray-900 truncate">
@@ -399,7 +387,7 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
     );
 }
 
-export default async function ChapterDetailPage({ params }: ChapterDetailPageProps) {
+export default async function LessonDetailPage({ params }: LessonDetailPageProps) {
     // Check authentication
     const session = await auth.api.getSession({
         headers: await headers()
@@ -409,11 +397,11 @@ export default async function ChapterDetailPage({ params }: ChapterDetailPagePro
         redirect('/');
     }
 
-    const { courseId, chapterId } = await params;
+    const { courseId, lessonId } = await params;
 
     return (
-        <Suspense fallback={<ChapterDetailContent courseId={courseId} chapterId={chapterId} />}>
-            <ChapterDetailPageContent courseId={courseId} chapterId={chapterId} />
+        <Suspense fallback={<LessonDetailContent courseId={courseId} lessonId={lessonId} />}>
+            <LessonDetailPageContent courseId={courseId} lessonId={lessonId} />
         </Suspense>
     );
 }

@@ -9,7 +9,7 @@ export interface Course {
   description?: string;
   driveUrl: string;
   folderId: string;
-  chapterCount: number;
+  lessonCount: number;
   lastUpdated: Date;
   thumbnailUrl?: string;
 }
@@ -20,7 +20,7 @@ export interface Course {
 export function transformDriveFolderToCourse(
   folder: drive_v3.Schema$File,
   driveUrl: string,
-  chapterCount: number = 0
+  lessonCount: number = 0
 ): Course {
   return {
     id: folder.id!,
@@ -28,7 +28,7 @@ export function transformDriveFolderToCourse(
     description: folder.description || undefined,
     driveUrl,
     folderId: folder.id!,
-    chapterCount,
+    lessonCount,
     lastUpdated: folder.modifiedTime ? new Date(folder.modifiedTime) : new Date(),
     thumbnailUrl: folder.thumbnailLink || undefined,
   };

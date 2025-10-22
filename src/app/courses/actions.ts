@@ -31,14 +31,14 @@ export async function fetchCourses(session: UserSession): Promise<{ courses: Cou
                 // Get folder metadata
                 const folderMetadata = await driveService.getFolderMetadata(folderId);
 
-                // Get chapter count by listing subfolders
-                const chapters = await driveService.listFolders(folderId);
+                // Get lesson count by listing subfolders
+                const lessons = await driveService.listFolders(folderId);
 
                 // Transform to Course object
                 const course = transformDriveFolderToCourse(
                     folderMetadata,
                     courseUrl,
-                    chapters.length
+                    lessons.length
                 );
 
                 courses.push(course);

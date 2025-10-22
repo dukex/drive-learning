@@ -1,11 +1,11 @@
 import { drive_v3 } from 'googleapis';
 
 /**
- * ChapterFile interface representing individual files within a Chapter
+ * LessonFile interface representing individual files within a Lesson
  */
-export interface ChapterFile {
+export interface LessonFile {
   id: string;
-  chapterId: string;
+  lessonId: string;
   name: string;
   mimeType: string;
   size: number;
@@ -16,15 +16,15 @@ export interface ChapterFile {
 }
 
 /**
- * Transform Google Drive file data to ChapterFile object
+ * Transform Google Drive file data to LessonFile object
  */
-export function transformDriveFileToChapterFile(
+export function transformDriveFileToLessonFile(
   file: drive_v3.Schema$File,
-  chapterId: string
-): ChapterFile {
+  lessonId: string
+): LessonFile {
   return {
     id: file.id!,
-    chapterId,
+    lessonId,
     name: file.name || 'Untitled File',
     mimeType: file.mimeType || 'application/octet-stream',
     size: file.size ? parseInt(file.size, 10) : 0,
@@ -143,11 +143,11 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
- * Generate cache key for chapter files
+ * Generate cache key for lesson files
  */
-export function generateChapterFilesCacheKey(
-  chapterId: string, 
+export function generateLessonFilesCacheKey(
+  lessonId: string, 
   userId?: string
 ): string {
-  return userId ? `files:${chapterId}:${userId}` : `files:${chapterId}`;
+  return userId ? `files:${lessonId}:${userId}` : `files:${lessonId}`;
 }

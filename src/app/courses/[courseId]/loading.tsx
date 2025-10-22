@@ -35,7 +35,7 @@ export default function CourseDetailLoading() {
           </div>
         </div>
 
-        {/* Chapters Section Loading */}
+        {/* Lessons Section Loading */}
         <div className="mb-8">
           <div className="h-8 bg-gray-200 rounded w-32 mb-6 animate-pulse"></div>
           

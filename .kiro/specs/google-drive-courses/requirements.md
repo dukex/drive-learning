@@ -2,14 +2,14 @@
 
 ## Introduction
 
-A course management system that displays Google Drive-based courses in a hierarchical structure. The system reads course URLs from an environment variable, fetches course content from Google Drive, and presents courses, chapters, and files in an organized interface for users to browse and access educational content.
+A course management system that displays Google Drive-based courses in a hierarchical structure. The system reads course URLs from an environment variable, fetches course content from Google Drive, and presents courses, lessons, and files in an organized interface for users to browse and access educational content.
 
 ## Glossary
 
 - **Course_Management_System**: The web application that displays and manages Google Drive courses
 - **Course**: A top-level educational unit represented by a Google Drive folder URL
-- **Chapter**: A subdirectory within a Course folder containing related educational materials
-- **Chapter_File**: Individual files (documents, videos, etc.) stored within a Chapter directory
+- **Lesson**: A subdirectory within a Course folder containing related educational materials
+- **Lesson_File**: Individual files (documents, videos, etc.) stored within a Lesson directory
 - **COURSES_LIST**: Environment variable containing comma-separated Google Drive folder URLs
 - **Google_Drive_API**: Google's API service for accessing Drive content programmatically
 
@@ -29,27 +29,27 @@ A course management system that displays Google Drive-based courses in a hierarc
 
 ### Requirement 2
 
-**User Story:** As a student, I want to view chapters within a selected course, so that I can navigate through the course content systematically.
+**User Story:** As a student, I want to view lessons within a selected course, so that I can navigate through the course content systematically.
 
 #### Acceptance Criteria
 
-1. WHEN the user selects a course, THE Course_Management_System SHALL display all chapters within that course
+1. WHEN the user selects a course, THE Course_Management_System SHALL display all lessons within that course
 2. THE Course_Management_System SHALL fetch subdirectories from the selected course's Google Drive folder
-3. THE Course_Management_System SHALL display each chapter with its name and file count
-4. THE Course_Management_System SHALL provide navigation links to individual chapter pages
+3. THE Course_Management_System SHALL display each lesson with its name and file count
+4. THE Course_Management_System SHALL provide navigation links to individual lesson pages
 5. THE Course_Management_System SHALL display a breadcrumb navigation showing the current course
 
 ### Requirement 3
 
-**User Story:** As a student, I want to view and access files within a chapter, so that I can study the educational materials.
+**User Story:** As a student, I want to view and access files within a lesson, so that I can study the educational materials.
 
 #### Acceptance Criteria
 
-1. WHEN the user selects a chapter, THE Course_Management_System SHALL display all files within that chapter
-2. THE Course_Management_System SHALL fetch file listings from the selected chapter's Google Drive folder
+1. WHEN the user selects a lesson, THE Course_Management_System SHALL display all files within that lesson
+2. THE Course_Management_System SHALL fetch file listings from the selected lesson's Google Drive folder
 3. THE Course_Management_System SHALL display each file with its name, type, and size
 4. THE Course_Management_System SHALL provide direct access links to view or download files
-5. THE Course_Management_System SHALL display breadcrumb navigation showing course and chapter hierarchy
+5. THE Course_Management_System SHALL display breadcrumb navigation showing course and lesson hierarchy
 
 ### Requirement 4
 
@@ -72,5 +72,5 @@ A course management system that displays Google Drive-based courses in a hierarc
 1. THE Course_Management_System SHALL implement caching for Google Drive API responses
 2. THE Course_Management_System SHALL display loading indicators during content fetching
 3. WHEN API calls exceed 5 seconds, THE Course_Management_System SHALL display a timeout message
-4. THE Course_Management_System SHALL implement pagination for chapters with more than 50 files
+4. THE Course_Management_System SHALL implement pagination for lessons with more than 50 files
 5. THE Course_Management_System SHALL preload course metadata on application startup

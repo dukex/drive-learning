@@ -7,25 +7,18 @@ export {
   generateCourseCacheKey,
 } from './course';
 
-// Chapter models and utilities
-export type { Chapter } from './chapter';
+// Lesson models and utilities
+export type { Lesson } from './lesson';
 export {
-  transformDriveFolderToChapter,
-  sortChaptersByName,
-  assignChapterOrder,
-  generateChapterCacheKey,
-} from './chapter';
+  transformDriveFolderToLesson,
+  sortLessonsByName,
+  assignLessonOrder,
+  generateLessonCacheKey,
+} from './lesson';
 
-// ChapterFile models and utilities
-export type { ChapterFile } from './chapter-file';
+// LessonFile models and utilities
+export type { LessonFile } from './lesson-file';
 export {
-  transformDriveFileToChapterFile,
-  generateDownloadUrl,
-  generateViewUrl,
-  isGoogleWorkspaceFile,
-  getExportFormat,
-  isViewableInBrowser,
-  getFileTypeCategory,
-  formatFileSize,
-  generateChapterFilesCacheKey,
-} from './chapter-file';
+  transformDriveFileToLessonFile,
+  generateLessonFilesCacheKey,
+} from './lesson-file';

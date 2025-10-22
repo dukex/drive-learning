@@ -1,9 +1,9 @@
 import { drive_v3 } from 'googleapis';
 
 /**
- * Chapter interface representing a subdirectory within a Course
+ * Lesson interface representing a subdirectory within a Course
  */
-export interface Chapter {
+export interface Lesson {
   id: string;
   courseId: string;
   title: string;
@@ -14,18 +14,18 @@ export interface Chapter {
 }
 
 /**
- * Transform Google Drive subfolder data to Chapter object
+ * Transform Google Drive subfolder data to Lesson object
  */
-export function transformDriveFolderToChapter(
+export function transformDriveFolderToLesson(
   folder: drive_v3.Schema$File,
   courseId: string,
   fileCount: number = 0,
   order: number = 0
-): Chapter {
+): Lesson {
   return {
     id: folder.id!,
     courseId,
-    title: folder.name || 'Untitled Chapter',
+    title: folder.name || 'Untitled Lesson',
     folderId: folder.id!,
     fileCount,
     lastUpdated: folder.modifiedTime ? new Date(folder.modifiedTime) : new Date(),
@@ -34,11 +34,11 @@ export function transformDriveFolderToChapter(
 }
 
 /**
- * Sort chapters by name (natural ordering for chapter numbers)
+ * Sort lessons by name (natural ordering for lesson numbers)
  */
-export function sortChaptersByName(chapters: Chapter[]): Chapter[] {
-  return chapters.sort((a, b) => {
-    // Extract numbers from chapter names for natural sorting
+export function sortLessonsByName(lessons: Lesson[]): Lesson[] {
+  return lessons.sort((a, b) => {
+    // Extract numbers from lesson names for natural sorting
     const aMatch = a.title.match(/(\d+)/);
     const bMatch = b.title.match(/(\d+)/);
     
@@ -56,24 +56,24 @@ export function sortChaptersByName(chapters: Chapter[]): Chapter[] {
 }
 
 /**
- * Assign order numbers to chapters based on sorted position
+ * Assign order numbers to lessons based on sorted position
  */
-export function assignChapterOrder(chapters: Chapter[]): Chapter[] {
-  const sortedChapters = sortChaptersByName(chapters);
-  return sortedChapters.map((chapter, index) => ({
-    ...chapter,
+export function assignLessonOrder(lessons: Lesson[]): Lesson[] {
+  const sortedLessons = sortLessonsByName(lessons);
+  return sortedLessons.map((lesson, index) => ({
+    ...lesson,
     order: index + 1,
   }));
 }
 
 /**
- * Generate cache key for chapter data
+ * Generate cache key for lesson data
  */
-export function generateChapterCacheKey(
+export function generateLessonCacheKey(
   courseId: string, 
-  chapterId?: string, 
+  lessonId?: string, 
   userId?: string
 ): string {
-  const base = chapterId ? `chapter:${courseId}:${chapterId}` : `chapters:${courseId}`;
+  const base = lessonId ? `lesson:${courseId}:${lessonId}` : `lessons:${courseId}`;
   return userId ? `${base}:${userId}` : base;
 }
