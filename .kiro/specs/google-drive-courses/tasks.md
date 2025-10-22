@@ -151,20 +151,20 @@
   - Display current chapter name in breadcrumb
   - _Requirements: 3.5_
 
-- [ ] 7. Implement caching and performance optimizations
+- [x] 7. Implement caching and performance optimizations
   - Add Redis caching layer for API responses
   - Implement cache invalidation strategies
   - Add loading indicators and pagination for large file lists
   - _Requirements: 5.1, 5.2, 5.4, 5.5_
 
-- [ ] 7.1 Set up caching infrastructure
+- [x] 7.1 Set up caching infrastructure
   - Configure Redis or in-memory caching for API responses
   - Implement cache key generation based on course/chapter IDs
   - Add cache TTL settings matching design specifications
   - Create cache invalidation utilities
   - _Requirements: 5.1, 5.5_
 
-- [ ] 7.2 Add pagination for large file lists
+- [x] 7.2 Add pagination for large file lists
   - Implement pagination component for chapter files
   - Add server-side pagination to chapter files API
   - Set page size limit to 50 files per page

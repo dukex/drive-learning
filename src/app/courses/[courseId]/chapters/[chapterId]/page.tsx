@@ -1,15 +1,12 @@
 import { Suspense } from 'react';
 import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
 import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { getUserSession, validateUserPermissions, extractFolderIdFromUrl } from '@/lib/drive-auth-utils';
 import { GoogleDriveService } from '@/lib/google-drive';
-import { transformDriveFolderToCourse, transformDriveFolderToChapter, transformDriveFileToChapterFile } from '@/lib/models';
 import Breadcrumb, { BreadcrumbIcons } from '@/components/ui/Breadcrumb';
+import { ChapterFilesClient } from '@/components/courses/ChapterFilesClient';
 import type { ChapterFile } from '@/lib/models';
-import { formatFileSize, getFileTypeCategory, isViewableInBrowser } from '@/lib/models/chapter-file';
-import { getFileTypeIcon, getFileTypeDisplayName, supportsPreview, getPreviewUrl } from '@/lib/utils/file-icons';
 
 interface ChapterDetailPageProps {
     params: Promise<{
@@ -22,12 +19,19 @@ interface ChapterApiResponse {
     files: ChapterFile[];
     chapterName: string;
     chapterDescription?: string;
-    totalFiles: number;
+    pagination: {
+        currentPage: number;
+        totalPages: number;
+        totalFiles: number;
+        limit: number;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+    };
     cached: boolean;
     timestamp: string;
 }
 
-async function fetchChapterData(courseId: string, chapterId: string): Promise<ChapterApiResponse & { courseName: string }> {
+async function fetchInitialChapterData(courseId: string, chapterId: string): Promise<{ courseName: string; chapterName: string; chapterDescription?: string }> {
     try {
         // Get user session and validate authentication
         const session = await getUserSession();
@@ -42,10 +46,9 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
             throw new Error('Course ID and Chapter ID are required');
         }
 
-        // Initialize Google Drive service with user's access token
+        // Get course and chapter metadata for breadcrumb
         const driveService = new GoogleDriveService(session.accessToken);
-
-        // Get course name for breadcrumb
+        
         let courseFolderId: string;
         try {
             courseFolderId = courseId.includes('drive.google.com')
@@ -55,9 +58,6 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
             throw new Error('Invalid course ID format');
         }
 
-        const courseMetadata = await driveService.getFolderMetadata(courseFolderId);
-
-        // Get chapter folder ID
         let chapterFolderId: string;
         try {
             chapterFolderId = chapterId.includes('drive.google.com')
@@ -67,43 +67,19 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
             throw new Error('Invalid chapter ID format');
         }
 
-        // Get chapter metadata and files directly
-        const chapterMetadata = await driveService.getFolderMetadata(chapterFolderId);
-        const driveFiles = await driveService.listFiles(chapterFolderId);
-
-        // Transform files to ChapterFile objects
-        const files: ChapterFile[] = [];
-        for (const driveFile of driveFiles) {
-            try {
-                const chapterFile: ChapterFile = {
-                    id: driveFile.id!,
-                    chapterId,
-                    name: driveFile.name || 'Untitled File',
-                    mimeType: driveFile.mimeType || 'application/octet-stream',
-                    size: driveFile.size ? parseInt(driveFile.size, 10) : 0,
-                    downloadUrl: driveFile.webContentLink || `https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`,
-                    viewUrl: driveFile.webViewLink,
-                    thumbnailUrl: driveFile.thumbnailLink,
-                    lastModified: driveFile.modifiedTime ? new Date(driveFile.modifiedTime) : new Date(),
-                };
-                files.push(chapterFile);
-            } catch (fileError) {
-                console.error(`Failed to process file ${driveFile.name}:`, fileError);
-            }
-        }
+        const [courseMetadata, chapterMetadata] = await Promise.all([
+            driveService.getFolderMetadata(courseFolderId),
+            driveService.getFolderMetadata(chapterFolderId)
+        ]);
 
         return {
-            files,
-            chapterName: chapterMetadata.name || 'Unknown Chapter',
-            chapterDescription: chapterMetadata.description,
-            totalFiles: files.length,
-            cached: false,
-            timestamp: new Date().toISOString(),
             courseName: courseMetadata.name || 'Unknown Course',
+            chapterName: chapterMetadata.name || 'Unknown Chapter',
+            chapterDescription: chapterMetadata.description
         };
 
     } catch (error) {
-        console.error('Chapter details fetch error:', error);
+        console.error('Chapter metadata fetch error:', error);
 
         if (error instanceof Error && error.message.includes('Authentication')) {
             redirect('/api/auth/signin');
@@ -121,17 +97,7 @@ async function fetchChapterData(courseId: string, chapterId: string): Promise<Ch
     }
 }
 
-function formatLastModified(date: Date): string {
-    return new Intl.DateTimeFormat('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
-}
 
-// File icon function removed - now using getFileTypeIcon from utils
 
 function ChapterDetailContent({ courseId, chapterId }: { courseId: string; chapterId: string }) {
     const breadcrumbItems = [
@@ -182,8 +148,24 @@ function ChapterDetailContent({ courseId, chapterId }: { courseId: string; chapt
 }
 
 async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: string; chapterId: string }) {
-    const data = await fetchChapterData(courseId, chapterId);
-    const { files, chapterName, chapterDescription, totalFiles, courseName } = data;
+    const { courseName, chapterName, chapterDescription } = await fetchInitialChapterData(courseId, chapterId);
+
+    // Create initial data structure for the client component
+    const initialData: ChapterApiResponse = {
+        files: [],
+        chapterName,
+        chapterDescription,
+        pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalFiles: 0,
+            limit: 50,
+            hasNextPage: false,
+            hasPreviousPage: false
+        },
+        cached: false,
+        timestamp: new Date().toISOString()
+    };
 
     const breadcrumbItems = [
         {
@@ -235,172 +217,19 @@ async function ChapterDetailPageContent({ courseId, chapterId }: { courseId: str
                                             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                         />
                                     </svg>
-                                    {totalFiles} {totalFiles === 1 ? 'File' : 'Files'}
+                                    Loading files...
                                 </span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Files List */}
-                <div className="mb-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Files</h2>
-
-                    {files.length === 0 ? (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-                            <svg
-                                className="w-12 h-12 text-gray-400 mx-auto mb-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                            </svg>
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                No files found
-                            </h3>
-                            <p className="text-gray-500">
-                                This chapter doesn't have any files yet.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="divide-y divide-gray-200">
-                                {files.map((file) => (
-                                    <div
-                                        key={file.id}
-                                        className="p-6 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center space-x-4 flex-1 min-w-0">
-                                                {/* File Icon */}
-                                                <div className="flex-shrink-0">
-                                                    {getFileTypeIcon(file.mimeType, file.name)}
-                                                </div>
-
-                                                {/* File Info */}
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="text-lg font-medium text-gray-900 truncate">
-                                                        {file.name}
-                                                    </h3>
-                                                    <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                                                        <span>
-                                                            {formatFileSize(file.size)}
-                                                        </span>
-                                                        <span>
-                                                            {formatLastModified(new Date(file.lastModified))}
-                                                        </span>
-                                                        <span>
-                                                            {getFileTypeDisplayName(file.mimeType, file.name)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Action Buttons */}
-                                            <div className="flex items-center space-x-3 ml-4">
-                                                {/* Preview Button */}
-                                                {supportsPreview(file.mimeType, file.name) && (
-                                                    <Link
-                                                        href={getPreviewUrl(file.id, file.mimeType, file.name) || file.viewUrl || '#'}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                                                    >
-                                                        <svg
-                                                            className="w-4 h-4 mr-1"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            viewBox="0 0 24 24"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                                            />
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                                                            />
-                                                        </svg>
-                                                        Preview
-                                                    </Link>
-                                                )}
-
-                                                {/* View Button (fallback for non-previewable files) */}
-                                                {!supportsPreview(file.mimeType, file.name) && file.viewUrl && isViewableInBrowser(file.mimeType) && (
-                                                    <Link
-                                                        href={file.viewUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                                    >
-                                                        <svg
-                                                            className="w-4 h-4 mr-1"
-                                                            fill="none"
-                                                            stroke="currentColor"
-                                                            viewBox="0 0 24 24"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                                                            />
-                                                        </svg>
-                                                        Open
-                                                    </Link>
-                                                )}
-
-                                                {/* Download Button */}
-                                                <Link
-                                                    href={file.downloadUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                                >
-                                                    <svg
-                                                        className="w-4 h-4 mr-1"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                                        />
-                                                    </svg>
-                                                    Download
-                                                </Link>
-                                            </div>
-                                        </div>
-
-                                        {/* Thumbnail if available */}
-                                        {file.thumbnailUrl && (
-                                            <div className="mt-4">
-                                                <img
-                                                    src={file.thumbnailUrl}
-                                                    alt={`${file.name} thumbnail`}
-                                                    className="w-32 h-24 rounded-lg object-cover border border-gray-200"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                {/* Files List with Pagination */}
+                <ChapterFilesClient 
+                    courseId={courseId}
+                    chapterId={chapterId}
+                    initialData={initialData}
+                />
             </div>
         </div>
     );

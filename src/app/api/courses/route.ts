@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserSession, parseCoursesList, validateUserPermissions, generateCacheKey, extractFolderIdFromUrl } from '@/lib/drive-auth-utils';
+import { getUserSession, parseCoursesList, validateUserPermissions, extractFolderIdFromUrl } from '@/lib/drive-auth-utils';
 import { GoogleDriveService } from '@/lib/google-drive';
 import { transformDriveFolderToCourse } from '@/lib/models';
+import { getCacheService, CacheKeyGenerator, CACHE_CONFIG } from '@/lib/cache';
 import type { Course } from '@/lib/models';
-
-// Cache for storing course data (1 hour TTL)
-const courseCache = new Map<string, { data: Course[]; timestamp: number }>();
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,14 +20,15 @@ export async function GET(request: NextRequest) {
     validateUserPermissions(session);
 
     // Check cache first
-    const cacheKey = generateCacheKey('courses', session.user.id);
-    const cached = courseCache.get(cacheKey);
+    const cache = getCacheService();
+    const cacheKey = CacheKeyGenerator.courses(session.user.id);
+    const cachedCourses = await cache.get<Course[]>(cacheKey);
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cachedCourses) {
       return NextResponse.json({
-        courses: cached.data,
+        courses: cachedCourses,
         cached: true,
-        timestamp: new Date(cached.timestamp).toISOString()
+        timestamp: new Date().toISOString()
       });
     }
 
@@ -72,10 +70,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Cache the results
-    courseCache.set(cacheKey, {
-      data: courses,
-      timestamp: Date.now()
-    });
+    await cache.set(cacheKey, courses, CACHE_CONFIG.COURSES_TTL);
 
     // Return response with courses and any errors
     const response: any = {
@@ -120,12 +115,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Clean up expired cache entries periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of courseCache.entries()) {
-    if (now - value.timestamp > CACHE_TTL) {
-      courseCache.delete(key);
-    }
-  }
-}, CACHE_TTL); // Run cleanup every hour
+// Cache cleanup is handled automatically by the cache service

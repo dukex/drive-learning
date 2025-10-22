@@ -148,13 +148,7 @@ export function isValidGoogleDriveUrl(url: string): boolean {
   }
 }
 
-/**
- * Generate cache key for course data
- */
-export function generateCacheKey(type: 'courses' | 'course' | 'chapter', userId: string, id?: string): string {
-  const baseKey = `drive-courses:${userId}:${type}`;
-  return id ? `${baseKey}:${id}` : baseKey;
-}
+
 
 /**
  * Validate user has required permissions
