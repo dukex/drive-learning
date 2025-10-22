@@ -10,7 +10,7 @@ const CACHE_TTL = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { courseId: string } }
+  { params }: { params: Promise<{ courseId: string }> }
 ) {
   try {
     // Get user session and validate authentication
@@ -25,7 +25,7 @@ export async function GET(
     // Validate user permissions
     validateUserPermissions(session);
 
-    const { courseId } = params;
+    const { courseId } = await params;
     
     if (!courseId) {
       return NextResponse.json(
