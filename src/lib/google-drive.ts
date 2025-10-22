@@ -65,7 +65,9 @@ export class GoogleDriveService {
       const response = await this.drive.files.list({
         q: `'${folderId}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
         fields: 'files(id,name,mimeType,size,modifiedTime,webViewLink,webContentLink,thumbnailLink)',
-        orderBy: 'name'
+        orderBy: 'name',
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true
       });
 
       return response.data.files || [];
@@ -83,6 +85,7 @@ export class GoogleDriveService {
       const response = await this.drive.files.get({
         fileId: folderId,
         fields: 'id,name,description,modifiedTime,webViewLink',
+        includeItemsFromAllDrives: true,
         supportsAllDrives: true
       });
 
@@ -100,7 +103,9 @@ export class GoogleDriveService {
     try {
       const response = await this.drive.files.get({
         fileId: fileId,
-        fields: 'webContentLink'
+        fields: 'webContentLink',
+        includeItemsFromAllDrives: true,
+        supportsAllDrives: true
       });
 
       return response.data.webContentLink || '';

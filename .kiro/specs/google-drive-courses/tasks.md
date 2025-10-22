@@ -124,28 +124,28 @@
   - Style breadcrumbs with Tailwind CSS
   - _Requirements: 2.5_
 
-- [ ] 6. Create chapter detail page with files
+- [x] 6. Create chapter detail page with files
   - Build chapter detail page displaying all chapter files
   - Implement file list with metadata (name, type, size)
   - Add file access links for viewing and downloading
   - Include breadcrumb navigation showing full hierarchy
   - _Requirements: 3.1, 3.3, 3.4, 3.5_
 
-- [ ] 6.1 Implement ChapterDetailPage component
+- [x] 6.1 Implement ChapterDetailPage component
   - Create dynamic route page for /courses/[courseId]/chapters/[chapterId]
   - Fetch chapter files data using API route
   - Display files list with comprehensive metadata
   - Implement direct access links for file viewing/downloading
   - _Requirements: 3.1, 3.2, 3.4_
 
-- [ ] 6.2 Add file type icons and preview functionality
+- [x] 6.2 Add file type icons and preview functionality
   - Create file type detection utility
   - Add appropriate icons for different file types
   - Implement file preview for supported formats
   - Handle unsupported file types gracefully
   - _Requirements: 3.3_
 
-- [ ] 6.3 Enhance breadcrumb navigation for chapters
+- [x] 6.3 Enhance breadcrumb navigation for chapters
   - Extend Breadcrumb component to show course → chapter hierarchy
   - Add proper linking back to course and courses list
   - Display current chapter name in breadcrumb
