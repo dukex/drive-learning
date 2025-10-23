@@ -5,7 +5,7 @@ import { auth } from '@/lib/auth';
 import { headers } from 'next/headers';
 import { getUserSession, validateUserPermissions, extractFolderIdFromUrl } from '@/lib/drive-auth-utils';
 import { GoogleDriveService } from '@/lib/google-drive';
-import { transformDriveFolderToCourse, transformDriveFileToLessonFile } from '@/lib/models';
+import { transformDriveFileToLessonFile } from '@/lib/models';
 import Breadcrumb, { BreadcrumbIcons } from '@/components/ui/Breadcrumb';
 import type { LessonFile } from '@/lib/models';
 import { formatFileSize, isViewableInBrowser } from '@/lib/models/lesson-file';
@@ -42,8 +42,8 @@ async function fetchLessonData(courseId: string, lessonId: string): Promise<Less
             throw new Error('Course ID and Lesson ID are required');
         }
 
-        // Initialize Google Drive service with user's access token
-        const driveService = new GoogleDriveService(session.accessToken);
+        // Initialize Google Drive service with user ID for automatic token management
+        const driveService = new GoogleDriveService(session.user.id);
 
         // Get course name for breadcrumb
         let courseFolderId: string;

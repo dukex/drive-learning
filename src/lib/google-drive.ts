@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { TokenManager, ApiRequestInterceptor } from './token-management';
 
 export interface DriveFolder {
   id: string;
@@ -28,113 +29,126 @@ export interface FolderMetadata {
 }
 
 export class GoogleDriveService {
-  private drive: any;
+  private userId: string;
+  private tokenManager: TokenManager;
+  private apiInterceptor: ApiRequestInterceptor;
 
-  constructor(accessToken: string) {
-    const auth = new google.auth.OAuth2();
-    auth.setCredentials({ access_token: accessToken });
-
-    this.drive = google.drive({ version: 'v3', auth });
+  constructor(userId: string) {
+    this.userId = userId;
+    this.tokenManager = new TokenManager();
+    this.apiInterceptor = new ApiRequestInterceptor(this.tokenManager);
   }
 
   /**
    * List folders within a parent folder
    */
   async listFolders(folderId: string): Promise<DriveFolder[]> {
-    try {
-      const response = await this.drive.files.list({
-        q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-        fields: 'files(id,name,mimeType,modifiedTime,webViewLink)',
-        orderBy: 'name',
-        includeItemsFromAllDrives: true,
-        supportsAllDrives: true
-      });
+    const response = await this.apiInterceptor.interceptGoogleApiCall(
+      (auth) => {
+        const drive = google.drive({ version: 'v3', auth });
+        return drive.files.list({
+          q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          fields: 'files(id,name,mimeType,modifiedTime,webViewLink)',
+          orderBy: 'name',
+          includeItemsFromAllDrives: true,
+          supportsAllDrives: true
+        });
+      },
+      this.userId,
+      'listFolders'
+    );
 
-      return response.data.files || [];
-    } catch (error) {
-      this.handleApiError(error, 'listing folders');
-      throw error;
-    }
+    return (response.data.files || []).map(file => ({
+      id: file.id || '',
+      name: file.name || '',
+      mimeType: file.mimeType || '',
+      modifiedTime: file.modifiedTime || '',
+      webViewLink: file.webViewLink || ''
+    }));
   }
 
   /**
    * List files within a folder (excluding subfolders)
    */
   async listFiles(folderId: string): Promise<DriveFile[]> {
-    try {
-      const response = await this.drive.files.list({
-        q: `'${folderId}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
-        fields: 'files(id,name,mimeType,size,modifiedTime,webViewLink,webContentLink,thumbnailLink)',
-        orderBy: 'name',
-        includeItemsFromAllDrives: true,
-        supportsAllDrives: true
-      });
+    const response = await this.apiInterceptor.interceptGoogleApiCall(
+      (auth) => {
+        const drive = google.drive({ version: 'v3', auth });
+        return drive.files.list({
+          q: `'${folderId}' in parents and mimeType!='application/vnd.google-apps.folder' and trashed=false`,
+          fields: 'files(id,name,mimeType,size,modifiedTime,webViewLink,webContentLink,thumbnailLink)',
+          orderBy: 'name',
+          includeItemsFromAllDrives: true,
+          supportsAllDrives: true
+        });
+      },
+      this.userId,
+      'listFiles'
+    );
 
-      return response.data.files || [];
-    } catch (error) {
-      this.handleApiError(error, 'listing files');
-      throw error;
-    }
+    return (response.data.files || []).map(file => ({
+      id: file.id || '',
+      name: file.name || '',
+      mimeType: file.mimeType || '',
+      size: file.size || undefined,
+      modifiedTime: file.modifiedTime || '',
+      webViewLink: file.webViewLink || '',
+      webContentLink: file.webContentLink || undefined,
+      thumbnailLink: file.thumbnailLink || undefined
+    }));
   }
 
   /**
    * Get metadata for a specific folder
    */
   async getFolderMetadata(folderId: string): Promise<FolderMetadata> {
-    try {
-      const response = await this.drive.files.get({
-        fileId: folderId,
-        fields: 'id,name,description,modifiedTime,webViewLink',
-        includeItemsFromAllDrives: true,
-        supportsAllDrives: true
-      });
+    const response = await this.apiInterceptor.interceptGoogleApiCall(
+      (auth) => {
+        const drive = google.drive({ version: 'v3', auth });
+        return drive.files.get({
+          fileId: folderId,
+          fields: 'id,name,description,modifiedTime,webViewLink',
+          supportsAllDrives: true
+        });
+      },
+      this.userId,
+      'getFolderMetadata'
+    );
 
-      return response.data;
-    } catch (error) {
-      this.handleApiError(error, 'getting folder metadata');
-      throw error;
-    }
+    const file = response.data;
+    return {
+      id: file.id || '',
+      name: file.name || '',
+      description: file.description || undefined,
+      modifiedTime: file.modifiedTime || '',
+      webViewLink: file.webViewLink || ''
+    };
   }
 
   /**
    * Get download URL for a file
    */
   async getFileDownloadUrl(fileId: string): Promise<string> {
-    try {
-      const response = await this.drive.files.get({
-        fileId: fileId,
-        fields: 'webContentLink',
-        includeItemsFromAllDrives: true,
-        supportsAllDrives: true
-      });
+    const response = await this.apiInterceptor.interceptGoogleApiCall(
+      (auth) => {
+        const drive = google.drive({ version: 'v3', auth });
+        return drive.files.get({
+          fileId: fileId,
+          fields: 'webContentLink',
+          supportsAllDrives: true
+        });
+      },
+      this.userId,
+      'getFileDownloadUrl'
+    );
 
-      return response.data.webContentLink || '';
-    } catch (error) {
-      this.handleApiError(error, 'getting file download URL');
-      throw error;
-    }
+    return response.data.webContentLink || '';
   }
 
   /**
-   * Handle API errors with proper error messages and rate limiting
+   * Get the current user ID
    */
-  private handleApiError(error: any, operation: string): void {
-    console.error(`Google Drive API error during ${operation}:`, error);
-
-    if (error.code === 401) {
-      throw new Error('Authentication failed. Please log in again.');
-    } else if (error.code === 403) {
-      if (error.message?.includes('rate')) {
-        throw new Error('Rate limit exceeded. Please try again later.');
-      } else {
-        throw new Error('Insufficient permissions to access this content.');
-      }
-    } else if (error.code === 404) {
-      throw new Error('The requested folder or file was not found.');
-    } else if (error.code === 429) {
-      throw new Error('Too many requests. Please try again later.');
-    } else {
-      throw new Error(`Failed to ${operation}. Please try again.`);
-    }
+  getUserId(): string {
+    return this.userId;
   }
 }

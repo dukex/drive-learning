@@ -47,8 +47,8 @@ async function fetchCourseData(courseId: string): Promise<CourseApiResponse> {
             throw new Error('Invalid course ID format');
         }
 
-        // Initialize Google Drive service with user's access token
-        const driveService = new GoogleDriveService(session.accessToken);
+        // Initialize Google Drive service with user ID for automatic token management
+        const driveService = new GoogleDriveService(session.user.id);
         
         try {
             // Get course metadata

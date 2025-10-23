@@ -17,8 +17,8 @@ export async function fetchCourses(session: UserSession): Promise<{ courses: Cou
         // Parse courses list from environment
         const courseConfig = parseCoursesList();
 
-        // Initialize Google Drive service with user's access token
-        const driveService = new GoogleDriveService(session.accessToken);
+        // Initialize Google Drive service with user ID for automatic token management
+        const driveService = new GoogleDriveService(session.user.id);
 
         // Fetch course data from Google Drive
         const courses: Course[] = [];
