@@ -216,19 +216,16 @@ export class TokenRefresher {
         const db = getDatabase();
 
         try {
-            // Calculate expiry timestamp
-            const expiresAt = Math.floor(tokens.expiresAt.getTime() / 1000);
-
             // Update the account record with new tokens
             const updateQuery = db.prepare(`
         UPDATE account 
-        SET accessToken = ?, expiresAt = ?, updatedAt = ?
+        SET accessToken = ?, accessTokenExpiresAt = ?, updatedAt = ?
         WHERE userId = ? AND providerId = 'google'
       `);
 
             const result = updateQuery.run(
                 tokens.accessToken,
-                expiresAt,
+                tokens.expiresAt.toISOString(),
                 Math.floor(Date.now() / 1000),
                 userId
             );
@@ -307,7 +304,7 @@ export class TokenRefresher {
         try {
             const updateQuery = db.prepare(`
         UPDATE account 
-        SET accessToken = NULL, expiresAt = NULL, updatedAt = ?
+        SET accessToken = NULL, accessTokenExpiresAt = NULL, updatedAt = ?
         WHERE userId = ? AND providerId = 'google'
       `);
 
@@ -342,20 +339,23 @@ export class TokenRefresher {
 
         try {
             const query = db.prepare(`
-        SELECT accessToken, expiresAt 
+        SELECT accessToken, accessTokenExpiresAt 
         FROM account 
         WHERE userId = ? AND providerId = 'google'
       `);
 
-            const result = query.get(userId) as { accessToken: string; expiresAt: number } | undefined;
+            const result = query.get(userId) as { accessToken: string; accessTokenExpiresAt: string } | undefined;
 
             if (!result?.accessToken) {
                 return null;
             }
 
             // Check if token is expired
-            if (result.expiresAt && result.expiresAt * 1000 <= Date.now()) {
-                return null;
+            if (result.accessTokenExpiresAt) {
+                const expiryTime = new Date(result.accessTokenExpiresAt).getTime();
+                if (expiryTime <= Date.now()) {
+                    return null;
+                }
             }
 
             return result.accessToken;
